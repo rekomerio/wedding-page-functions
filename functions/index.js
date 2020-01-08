@@ -141,38 +141,3 @@ exports.reserveGift = functions.region("europe-west1").https.onCall(async (data,
 
     return { message: message, gift: giftId };
 });
-
-exports.confirmArrival = functions
-    .region("europe-west1")
-    .https.onCall(async (data, context) => {
-        const { uid } = context.auth;
-        const { giftId } = data;
-        let message = "Ok";
-
-        if (!uid) {
-            return { message: "Unauthorized" };
-        }
-
-        if (!giftId) {
-            return { message: "Gift id was: " + giftId };
-        }
-
-        const docRef = db.collection("gifts").doc(giftId);
-
-        const doc = await docRef.get();
-
-        if (!doc.exists) {
-            message = "No such gift " + giftId;
-            console.log(message);
-        } else {
-            const gift = doc.data();
-            if (gift.reservedBy) {
-                message = "Gift already reserved by " + gift.reservedBy;
-                console.log(message);
-            } else {
-                await docRef.update({ reservedBy: uid, reservedAt: Date.now() });
-            }
-        }
-
-        return { message: message, gift: giftId };
-    });
