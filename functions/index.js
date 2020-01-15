@@ -61,7 +61,6 @@ exports.deleteUser = functions
                         querySnapshot.forEach(doc => {
                             batch.delete(doc.ref);
                         });
-                        console.log("Deleting guest:", doc.id);
 
                         return batch
                             .commit()
