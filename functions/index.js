@@ -76,6 +76,46 @@ exports.deleteUser = functions
 exports.removeGiftReservation = functions
     .region("europe-west1")
     .https.onCall(async (data, context) => {
+        try {
+            const { uid } = context.auth;
+            const { giftId } = data;
+
+            if (!uid) {
+                return { message: "Unauthorized" };
+            }
+
+            if (!giftId) {
+                return { message: "Gift id is required" };
+            }
+
+            const docRef = db.collection("gifts").doc(giftId);
+
+            const doc = await docRef.get();
+
+            if (!doc.exists) {
+                return { message: "Gift not found", giftId };
+            }
+
+            const gift = doc.data();
+
+            if (gift.reservedBy === uid) {
+                // Remove reservation
+                await docRef.update({ reservedBy: "" });
+            } else {
+                console.log(uid, "attempted to unreserve gift reserved by", gift.reservedBy);
+                return { message: "You have not made the gift reservation", giftId };
+            }
+
+            console.log(giftId, "unreserved by", uid);
+            return { message: "Ok", giftId };
+        } catch (error) {
+            console.error(error.message);
+            return { message: error.message };
+        }
+    });
+
+exports.reserveGift = functions.region("europe-west1").https.onCall(async (data, context) => {
+    try {
         const { uid } = context.auth;
         const { giftId } = data;
 
@@ -84,11 +124,10 @@ exports.removeGiftReservation = functions
         }
 
         if (!giftId) {
-            return { message: "Gift id was: " + giftId };
+            return { message: "giftId is required" };
         }
 
         const docRef = db.collection("gifts").doc(giftId);
-
         const doc = await docRef.get();
 
         if (!doc.exists) {
@@ -97,46 +136,17 @@ exports.removeGiftReservation = functions
 
         const gift = doc.data();
 
-        if (gift.reservedBy === uid) {
-            // Remove reservation
-            await docRef.update({ reservedBy: "" });
-        } else {
-            console.log(uid, "attempted to unreserve gift reserved by", gift.reservedBy);
-            return { message: "You have not made the gift reservation", giftId };
+        if (gift.reservedBy) {
+            console.log(uid, "attempted to reserve gift reserved by", gift.reservedBy);
+            return { message: "Gift is already reserved", giftId };
         }
 
-        console.log(giftId, "unreserved by", uid);
+        await docRef.update({ reservedBy: uid, reservedAt: Date.now() });
+
+        console.log(giftId, "reserved to", uid);
         return { message: "Ok", giftId };
-    });
-
-exports.reserveGift = functions.region("europe-west1").https.onCall(async (data, context) => {
-    const { uid } = context.auth;
-    const { giftId } = data;
-
-    if (!uid) {
-        return { message: "Unauthorized" };
+    } catch (error) {
+        console.error(error.message);
+        return { message: error.message };
     }
-
-    if (!giftId) {
-        return { message: "giftId is required", giftId };
-    }
-
-    const docRef = db.collection("gifts").doc(giftId);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-        return { message: "Gift not found", giftId };
-    }
-
-    const gift = doc.data();
-
-    if (gift.reservedBy) {
-        console.log(uid, "attempted to reserve gift reserved by", gift.reservedBy);
-        return { message: "Gift is already reserved", giftId };
-    }
-
-    await docRef.update({ reservedBy: uid, reservedAt: Date.now() });
-
-    console.log(giftId, "reserved to", uid);
-    return { message: "Ok", giftId };
 });
