@@ -80,16 +80,10 @@ exports.removeGiftReservation = functions
             const { uid } = context.auth;
             const { giftId } = data;
 
-            if (!uid) {
-                return { message: "Unauthorized" };
-            }
-
-            if (!giftId) {
-                return { message: "Gift id is required" };
-            }
+            if (!uid) return { message: "Unauthorized" };
+            if (!giftId) return { message: "Gift id is required" };
 
             const docRef = db.collection("gifts").doc(giftId);
-
             const doc = await docRef.get();
 
             if (!doc.exists) {
@@ -119,13 +113,8 @@ exports.reserveGift = functions.region("europe-west1").https.onCall(async (data,
         const { uid } = context.auth;
         const { giftId } = data;
 
-        if (!uid) {
-            return { message: "Unauthorized" };
-        }
-
-        if (!giftId) {
-            return { message: "giftId is required" };
-        }
+        if (!uid) return { message: "Unauthorized" };
+        if (!giftId) return { message: "giftId is required" };
 
         const docRef = db.collection("gifts").doc(giftId);
         const doc = await docRef.get();
@@ -148,5 +137,58 @@ exports.reserveGift = functions.region("europe-west1").https.onCall(async (data,
     } catch (error) {
         console.error(error.message);
         return { message: error.message };
+    }
+});
+
+exports.addSong = functions.region("europe-west1").https.onCall(async (data, context) => {
+    try {
+        const { uid } = context.auth;
+        const { name, artist } = data;
+
+        if (!uid) return { message: "Unauthorized" };
+        if (!name) return { message: "Song must have a name" };
+
+        await db.collection("songs").add({
+            name: name,
+            artist: artist || null,
+            addedBy: uid,
+            createdAt: Date.now()
+        });
+
+        return { message: "Ok" };
+    } catch (err) {
+        console.error(err.message);
+        return { message: err.message };
+    }
+});
+
+exports.removeSong = functions.region("europe-west1").https.onCall(async (data, context) => {
+    try {
+        const { uid } = context.auth;
+        const { id } = data;
+
+        if (!uid) return { message: "Unauthorized" };
+        if (!id) return { message: "id is required" };
+
+        const docRef = db.collection("songs").doc(id);
+        const doc = await docRef.get();
+
+        if (!doc.exists) {
+            return { message: "Song not found", id };
+        }
+
+        const song = doc.data();
+
+        if (song.addedBy !== uid) {
+            console.log(uid, "attempted to delete song added by", song.addedBy);
+            return { message: "You have not added this song", id };
+        }
+
+        await docRef.delete();
+
+        return { message: "Ok" };
+    } catch (err) {
+        console.error(err.message);
+        return { message: err.message };
     }
 });
