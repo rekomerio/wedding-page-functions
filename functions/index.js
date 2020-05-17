@@ -8,18 +8,19 @@ const db = admin.firestore();
 exports.addUser = functions
     .region("europe-west1")
     .auth.user()
-    .onCreate(user => {
+    .onCreate((user) => {
+        const name = user.email.split("@")[0];
         return db
             .collection("users")
             .doc(user.uid)
             .set({
                 email: user.email,
-                name: "Kayttaja",
+                name: name.charAt(0).toUpperCase() + name.slice(1),
                 isAvecAllowed: false,
                 isFamilyAllowed: false,
                 isAdmin: false,
                 isAllowedToConfirm: true,
-                createdAt: Date.now()
+                createdAt: Date.now(),
             })
             .then(() => {
                 console.log("User added", user.uid);
@@ -33,18 +34,18 @@ exports.addUser = functions
                         isFamilyMember: false,
                         isComing: null,
                         confirmedAt: null,
-                        createdAt: Date.now()
+                        createdAt: Date.now(),
                     })
                     .then(() => console.log("Guest added", user.uid))
-                    .catch(err => console.error(err));
+                    .catch((err) => console.error(err));
             })
-            .catch(err => console.error(err));
+            .catch((err) => console.error(err));
     });
 
 exports.deleteUser = functions
     .region("europe-west1")
     .auth.user()
-    .onDelete(user => {
+    .onDelete((user) => {
         return db
             .collection("users")
             .doc(user.uid)
@@ -55,10 +56,10 @@ exports.deleteUser = functions
                     .collection("guests")
                     .where("account", "==", user.uid)
                     .get()
-                    .then(querySnapshot => {
+                    .then((querySnapshot) => {
                         const batch = db.batch();
 
-                        querySnapshot.forEach(doc => {
+                        querySnapshot.forEach((doc) => {
                             batch.delete(doc.ref);
                         });
 
@@ -67,10 +68,10 @@ exports.deleteUser = functions
                             .then(() => {
                                 console.log("Batch committed");
                             })
-                            .catch(err => console.error(err.message));
+                            .catch((err) => console.error(err.message));
                     });
             })
-            .catch(err => console.error(err));
+            .catch((err) => console.error(err));
     });
 
 exports.removeGiftReservation = functions
@@ -152,7 +153,7 @@ exports.addSong = functions.region("europe-west1").https.onCall(async (data, con
             name: name,
             artist: artist || null,
             addedBy: uid,
-            createdAt: Date.now()
+            createdAt: Date.now(),
         });
 
         return { message: "Ok" };
