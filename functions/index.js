@@ -193,3 +193,31 @@ exports.removeSong = functions.region("europe-west1").https.onCall(async (data, 
         return { message: err.message };
     }
 });
+
+exports.renameGuests = functions.region("europe-west1").https.onRequest(async (req, res) => {
+    try {
+        const querySnapshot = await db.collection("guests").get();
+        const batch = db.batch();
+
+        querySnapshot.forEach((doc) => {
+            const email = doc.data().name; // Email is incorrectly set as name so lets fix that
+            if (email.includes("@")) {
+                const firstName = email.split("@")[0];
+                const lastName = email.split("@")[1].split(".")[0];
+                batch.update(doc.ref, {
+                    name:
+                        firstName.charAt(0).toUpperCase() +
+                        firstName.slice(1) +
+                        " " +
+                        lastName.charAt(0).toUpperCase() +
+                        lastName.slice(1),
+                });
+            }
+        });
+
+        await batch.commit();
+        res.status(200).send("Ok");
+    } catch (err) {
+        return res.status(500).send(err.message);
+    }
+});
