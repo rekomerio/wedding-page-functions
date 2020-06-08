@@ -218,6 +218,26 @@ exports.renameGuests = functions.region("europe-west1").https.onRequest(async (r
         await batch.commit();
         res.status(200).send("Ok");
     } catch (err) {
-        return res.status(500).send(err.message);
+        res.status(500).send(err.message);
     }
 });
+
+exports.countGiftReservations = functions
+    .region("europe-west1")
+    .https.onRequest(async (req, res) => {
+        try {
+            const querySnapshot = await db.collection("gifts").get();
+
+            const giftCount = {};
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.reservedBy) {
+                    if (!giftCount[data.reservedBy]) giftCount[data.reservedBy] = 1;
+                    else giftCount[data.reservedBy]++;
+                }
+            });
+            res.status(200).send(giftCount);
+        } catch (err) {
+            res.status(500).send(err.message);
+        }
+    });
