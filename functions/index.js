@@ -241,3 +241,25 @@ exports.countGiftReservations = functions
             res.status(500).send(err.message);
         }
     });
+
+exports.closeRegistration = functions
+    .region("europe-west1")
+    .https.onRequest(async (req, res) => {
+        try {
+            const querySnapshot = await db
+                .collection("users")
+                .where("isAdmin", "==", false)
+                .get();
+
+            const batch = db.batch();
+            querySnapshot.forEach((doc) => {
+                batch.update(doc.ref, { isAllowedToConfirm: false });
+            });
+
+            batch.commit();
+
+            res.status(200).send("Ok");
+        } catch (err) {
+            res.status(500).send(err.message);
+        }
+    });
