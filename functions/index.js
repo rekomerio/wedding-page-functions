@@ -263,3 +263,50 @@ exports.closeRegistration = functions
             res.status(500).send(err.message);
         }
     });
+
+exports.notificateFromBlog = functions
+    .region("europe-west1")
+    .firestore.document("blogs/{blogId}")
+    .onCreate(async (snap, context) => {
+        try {
+            const blog = snap.data();
+            const { title } = blog;
+
+            const users = await db.collection("users").get();
+            users.forEach(async (user) => {
+                await sendNotification("Uusi postaus", title, user.id, "/blog");
+            });
+
+            return {};
+        } catch (err) {
+            console.error(err);
+            return {};
+        }
+    });
+
+exports.notificateAll = functions.region("europe-west1").https.onRequest(async (req, res) => {
+    try {
+        const { title, text, href } = req.query;
+        if (!title) throw new Error("Title is missing");
+        if (!text) throw new Error("Text is missing");
+
+        const users = await db.collection("users").get();
+        users.forEach(async (user) => {
+            await sendNotification(title, text, user.id, href || null);
+        });
+        res.status(200).send({ message: "Ok" });
+    } catch (err) {
+        res.status(500).send({ error: err.message });
+    }
+});
+
+const sendNotification = async (title, text, user, href) => {
+    await db.collection("notifications").add({
+        title,
+        text,
+        user,
+        href,
+        isRead: false,
+        createdAt: Date.now(),
+    });
+};
